@@ -36,9 +36,6 @@ fn process(nums: &mut Vec<i32>, at: i32) {
   let current = nums[at as usize] % 100;
   let mut modes = nums[at as usize] / 100;
 
-  // print_vec(&nums);
-  // println!("{}, {}", current, modes);
-
   let mut immediate = [false; 5];
   for i in 0..5 {
     let something = modes % 10;
@@ -108,7 +105,7 @@ fn process(nums: &mut Vec<i32>, at: i32) {
   panic!("Opcode not known {} at {}", current, at);
 }
 
-fn main() {
+pub fn main() {
   // Reading part
   let contents = fs::read_to_string("input.txt").expect("File couldn't be read");
   let mut initialNums: Vec<i32> = contents
