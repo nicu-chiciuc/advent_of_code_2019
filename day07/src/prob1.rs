@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io;
@@ -34,8 +35,8 @@ fn read_int() -> i32 {
 
 fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
   let mut at = 0;
-  let mut readAt = 0;
-  let mut outWrite: Vec<i32> = vec![];
+  let mut read_at = 0;
+  let mut out_write: Vec<i32> = vec![];
 
   loop {
     let current = nums[at as usize] % 100;
@@ -59,7 +60,7 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
       let val1 = val_at(&nums, at + 1, immediate[0]);
       let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      println!("add: {} * {}", val1, val2);
+      // println!("add: {} * {}", val1, val2);
 
       let sum = val1 + val2;
       nums[outp as usize] = sum;
@@ -75,7 +76,7 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
       let val1 = val_at(&nums, at + 1, immediate[0]);
       let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      println!("mult: {} * {}", val1, val2);
+      // println!("mult: {} * {}", val1, val2);
       let sum = val1 * val2;
       nums[outp as usize] = sum;
 
@@ -89,9 +90,9 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
 
       // Get input
       // let inp = read_int();
-      let inp = inpRead[readAt];
-      readAt += 1;
-      println!("read {}", inp);
+      let inp = inpRead[read_at];
+      read_at += 1;
+      // println!("read {}", inp);
 
       nums[outp as usize] = inp;
 
@@ -104,8 +105,8 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
       let outp = nums[nums[(at + 1) as usize] as usize];
 
       // output
-      println!("output: {}", outp);
-      outWrite.push(outp);
+      // println!("output: {}", outp);
+      out_write.push(outp);
 
       at += 2;
       continue;
@@ -116,7 +117,7 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
       let val1 = val_at(&nums, at + 1, immediate[0]);
       let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      println!("jump true: {}, {}", val1, val2);
+      // println!("jump true: {}, {}", val1, val2);
 
       // Jumps here
       if val1 != 0 {
@@ -134,7 +135,7 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
       let val1 = val_at(&nums, at + 1, immediate[0]);
       let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      println!("jump false: {}, {}", val1, val2);
+      // println!("jump false: {}, {}", val1, val2);
 
       // Jumps here
       if val1 == 0 {
@@ -153,7 +154,7 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
       let val1 = val_at(&nums, at + 1, immediate[0]);
       let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      println!("less than: {} < {}", val1, val2);
+      // println!("less than: {} < {}", val1, val2);
 
       let eq = if val1 < val2 { 1 } else { 0 };
 
@@ -170,7 +171,7 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
       let val1 = val_at(&nums, at + 1, immediate[0]);
       let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      println!("equal: {} == {}", val1, val2);
+      // println!("equal: {} == {}", val1, val2);
 
       let eq = if val1 == val2 { 1 } else { 0 };
 
@@ -187,31 +188,76 @@ fn process(nums: &mut Vec<i32>, inpRead: &Vec<i32>) -> Vec<i32> {
     panic!("Opcode not known {} at {}", current, at);
   }
 
-  outWrite
+  out_write
+}
+
+fn get_combination_outp(comb: &Vec<i32>, initial_nums: &Vec<i32>) -> i32 {
+  let mut nums = initial_nums.to_vec();
+  let mut last_input = 0;
+
+  for i in comb.iter() {
+    let inp_reads: Vec<i32> = vec![*i, last_input];
+
+    let output = process(&mut nums, &inp_reads);
+
+    if output.len() > 1 {
+      println!("Expected output length to always be 1");
+    }
+
+    last_input = output[0];
+  }
+
+  for i in comb.iter() {
+    print!("{},", i)
+  }
+  println!(" -> {}", last_input);
+
+  last_input
+}
+
+fn is_valid_permutation(comb: &Vec<i32>) -> bool {
+  let mut set: HashSet<i32> = HashSet::new();
+  for i in comb.iter() {
+    set.insert(*i);
+  }
+
+  set.len() == comb.len()
 }
 
 pub fn main() {
   // Reading part
   let contents = fs::read_to_string("input.txt").expect("File couldn't be read");
-  let mut initialNums: Vec<i32> = contents
+  let initialNums: Vec<i32> = contents
     .split(",")
     .map(|num| num.parse().unwrap())
     .collect();
 
-  let mut nums = initialNums.to_vec();
-  // nums[1] = 12;
-  // nums[2] = 2;
+  // let combination: Vec<i32> = vec![1, 0, 4, 3, 2];
 
-  let mut last_input = 0;
+  // let current = get_combination_outp(&combination, &initialNums);
+  // println!("best: {}", current);
 
-  let combination: Vec<i32> = vec![4, 3, 2, 1, 0];
+  if true {
+    let mut max_output_signal = 0;
 
-  for i in combination.iter() {
-    let inpReads: Vec<i32> = vec![*i, last_input];
+    for i0 in 0..5 {
+      for i1 in 0..5 {
+        for i2 in 0..5 {
+          for i3 in 0..5 {
+            for i4 in 0..5 {
+              let combination: Vec<i32> = vec![i0, i1, i2, i3, i4];
+              if is_valid_permutation(&combination) {
+                let current = get_combination_outp(&combination, &initialNums);
+                if current > max_output_signal {
+                  max_output_signal = current;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
 
-    let output = process(&mut nums, &inpReads);
-
-    last_input = output[0];
-    println!("{}", output[0]);
+    println!("best: {}", max_output_signal);
   }
 }
