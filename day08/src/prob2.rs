@@ -31,7 +31,8 @@ fn print_layer(layer: &[u32; size]) {
   println!("---");
   for y in 0..height {
     for x in 0..width {
-      print!("{}", layer[x + y * width])
+      let val = layer[x + y * width] == 1;
+      print!("{}", if val { "*" } else { " " })
     }
     println!("");
   }
@@ -41,7 +42,6 @@ pub fn main() {
   let full_file = fs::read_to_string("input.txt").expect("File couldn't be read");
   let nums: Vec<u32> = full_file.chars().map(|d| d.to_digit(10).unwrap()).collect();
 
-  let loyer: [u32; size] = [0; size];
   let mut layers: Vec<[u32; size]> = vec![[0; size]];
 
   let mut i: usize = 0;
@@ -68,4 +68,11 @@ pub fn main() {
   for layer in layers.iter() {
     print_layer(&layer);
   }
+
+  print_layer(&final_img);
+
+  // for v in final_img.iter() {
+  //   print!("{}", v);
+  // }
+  // println!();
 }

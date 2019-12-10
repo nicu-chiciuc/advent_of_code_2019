@@ -5,6 +5,8 @@ use std::io;
 
 #[derive(Debug)]
 struct Computer {
+  name: String,
+  halted: bool,
   at: i32,
   nums: Vec<i32>,
   inp_read: Vec<i32>,
@@ -14,8 +16,10 @@ struct Computer {
 }
 
 impl Computer {
-  fn new(nums: Vec<i32>) -> Computer {
+  fn new(nums: Vec<i32>, name: String) -> Computer {
     Computer {
+      name,
+      halted: false,
       at: 0,
       nums: nums,
       inp_read: vec![],
@@ -98,7 +102,7 @@ impl Computer {
     if current == 4 {
       let outp = nums[nums[(at + 1) as usize] as usize];
 
-      println!("output: {}", outp);
+      // println!("output: {}", outp);
       self.out_write.push(outp);
       // self.write_at should be changed after it is read
 
@@ -181,6 +185,45 @@ impl Computer {
 
     panic!("Opcode not known {} at {}", current, at);
   }
+
+  fn add_to_read(&mut self, val: i32) {
+    self.inp_read.push(val);
+  }
+
+  fn new_response(&self) -> usize {
+    self.out_write.len() - self.write_at
+  }
+
+  fn read_response(&mut self) -> Option<i32> {
+    if self.out_write.len() > self.write_at {
+      self.write_at += 1;
+
+      // println!("Attempting to extract value at {}", self.write_at - 1);
+
+      return Some(self.out_write[self.write_at - 1]);
+    }
+
+    None
+  }
+
+  fn next_until_output(&mut self) -> Option<i32> {
+    loop {
+      let running = self.next();
+
+      let resp = self.read_response();
+      if let Some(val) = resp {
+        // println!("{}: Got output {}", self.name, val);
+
+        return Some(val);
+      }
+
+      if !running {
+        // println!("Comp {} halted", self.name);
+        self.halted = true;
+        return None;
+      }
+    }
+  }
 }
 
 fn val_at(nums: &Vec<i32>, at: i32, immediate: bool) -> i32 {
@@ -200,7 +243,7 @@ fn print_vec(vec: &Vec<i32>) {
 
 fn read_int() -> i32 {
   let mut input_text = String::new();
-  println!("input: ");
+  // println!("input: ");
 
   io::stdin()
     .read_line(&mut input_text)
@@ -211,30 +254,6 @@ fn read_int() -> i32 {
     Ok(i) => return i,
     Err(..) => panic!("Expected an integer"),
   };
-}
-
-fn get_combination_outp(comb: &Vec<i32>, initial_nums: &Vec<i32>) -> i32 {
-  let mut nums = initial_nums.to_vec();
-  let mut last_input = 0;
-
-  for i in comb.iter() {
-    let inp_reads: Vec<i32> = vec![*i, last_input];
-
-    let output = process(&mut nums, &inp_reads);
-
-    if output.len() > 1 {
-      println!("Expected output length to always be 1");
-    }
-
-    last_input = output[0];
-  }
-
-  for i in comb.iter() {
-    print!("{},", i)
-  }
-  println!(" -> {}", last_input);
-
-  last_input
 }
 
 fn is_valid_permutation(comb: &Vec<i32>) -> bool {
@@ -254,12 +273,49 @@ pub fn main() {
     .map(|num| num.parse().unwrap())
     .collect();
 
-  // let combination: Vec<i32> = vec![1, 0, 4, 3, 2];
+  let combination: Vec<i32> = vec![9, 7, 8, 5, 6];
+
+  let nr_computers = 5;
+
+  let mut computers: Vec<Computer> = vec![
+    Computer::new(initialNums.to_vec(), String::from("A")),
+    Computer::new(initialNums.to_vec(), String::from("B")),
+    Computer::new(initialNums.to_vec(), String::from("C")),
+    Computer::new(initialNums.to_vec(), String::from("D")),
+    Computer::new(initialNums.to_vec(), String::from("E")),
+  ];
+
+  // Start by adding all the phase settings
+  for comp_i in 0..computers.len() {
+    computers[comp_i].add_to_read(combination[comp_i]);
+  }
+
+  // First input is 0
+  computers[0].add_to_read(0);
+  let mut last_output = 0;
+
+  'outer: while !computers[nr_computers - 1].halted {
+    // Iterate through each computers getting the input from one and passing it to the other
+    for comp_i in 0..computers.len() {
+      if computers[comp_i].halted {
+        break 'outer;
+      }
+      let outp = computers[comp_i].next_until_output();
+      let next_comp = (comp_i + 1) % nr_computers;
+
+      if let Some(val) = outp {
+        computers[next_comp].add_to_read(val);
+        last_output = val;
+      }
+    }
+  }
+
+  println!("last output {}", last_output);
 
   // let current = get_combination_outp(&combination, &initialNums);
   // println!("best: {}", current);
 
-  if true {
+  if false {
     let mut max_output_signal = 0;
 
     for i0 in 0..5 {
@@ -269,10 +325,10 @@ pub fn main() {
             for i4 in 0..5 {
               let combination: Vec<i32> = vec![i0, i1, i2, i3, i4];
               if is_valid_permutation(&combination) {
-                let current = get_combination_outp(&combination, &initialNums);
-                if current > max_output_signal {
-                  max_output_signal = current;
-                }
+                // let current = get_combination_outp(&combination, &initialNums);
+                // if current > max_output_signal {
+                //   max_output_signal = current;
+                // }
               }
             }
           }
