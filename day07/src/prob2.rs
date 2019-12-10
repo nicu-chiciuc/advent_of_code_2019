@@ -3,6 +3,8 @@ use std::env;
 use std::fs;
 use std::io;
 
+const nr_computers: usize = 5;
+
 #[derive(Debug)]
 struct Computer {
   name: String,
@@ -265,24 +267,15 @@ fn is_valid_permutation(comb: &Vec<i32>) -> bool {
   set.len() == comb.len()
 }
 
-pub fn main() {
-  // Reading part
-  let contents = fs::read_to_string("input.txt").expect("File couldn't be read");
-  let initialNums: Vec<i32> = contents
-    .split(",")
-    .map(|num| num.parse().unwrap())
-    .collect();
-
-  let combination: Vec<i32> = vec![9, 7, 8, 5, 6];
-
-  let nr_computers = 5;
+fn combination_tester(combination: &Vec<i32>, initial_nums: &Vec<i32>) -> i32 {
+  let mut nums = initial_nums.to_vec();
 
   let mut computers: Vec<Computer> = vec![
-    Computer::new(initialNums.to_vec(), String::from("A")),
-    Computer::new(initialNums.to_vec(), String::from("B")),
-    Computer::new(initialNums.to_vec(), String::from("C")),
-    Computer::new(initialNums.to_vec(), String::from("D")),
-    Computer::new(initialNums.to_vec(), String::from("E")),
+    Computer::new(initial_nums.to_vec(), String::from("A")),
+    Computer::new(initial_nums.to_vec(), String::from("B")),
+    Computer::new(initial_nums.to_vec(), String::from("C")),
+    Computer::new(initial_nums.to_vec(), String::from("D")),
+    Computer::new(initial_nums.to_vec(), String::from("E")),
   ];
 
   // Start by adding all the phase settings
@@ -310,25 +303,40 @@ pub fn main() {
     }
   }
 
-  println!("last output {}", last_output);
+  last_output
+}
+
+pub fn main() {
+  // Reading part
+  let contents = fs::read_to_string("input.txt").expect("File couldn't be read");
+  let initialNums: Vec<i32> = contents
+    .split(",")
+    .map(|num| num.parse().unwrap())
+    .collect();
+
+  // let combination: Vec<i32> = vec![9, 7, 8, 5, 6];
+
+  // let last_output = combination_tester(&combination, &initialNums);
+
+  // println!("last output {}", last_output);
 
   // let current = get_combination_outp(&combination, &initialNums);
   // println!("best: {}", current);
 
-  if false {
+  if true {
     let mut max_output_signal = 0;
 
-    for i0 in 0..5 {
-      for i1 in 0..5 {
-        for i2 in 0..5 {
-          for i3 in 0..5 {
-            for i4 in 0..5 {
+    for i0 in 5..10 {
+      for i1 in 5..10 {
+        for i2 in 5..10 {
+          for i3 in 5..10 {
+            for i4 in 5..10 {
               let combination: Vec<i32> = vec![i0, i1, i2, i3, i4];
               if is_valid_permutation(&combination) {
-                // let current = get_combination_outp(&combination, &initialNums);
-                // if current > max_output_signal {
-                //   max_output_signal = current;
-                // }
+                let current = combination_tester(&combination, &initialNums);
+                if current > max_output_signal {
+                  max_output_signal = current;
+                }
               }
             }
           }
