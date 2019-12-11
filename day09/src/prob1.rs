@@ -19,6 +19,13 @@ struct Computer {
   write_at: usize,
 }
 
+#[derive(PartialEq, Debug, Copy, Clone)]
+enum Mode {
+  Immediate,
+  Position,
+  Relative,
+}
+
 impl Computer {
   fn new(nums_vec: Vec<i32>, name: String) -> Computer {
     let mut nums: HashMap<usize, i32> = HashMap::new();
@@ -50,151 +57,160 @@ impl Computer {
     let current = nums.get(&(at as usize)).unwrap() % 100;
     let mut modes = nums.get(&(at as usize)).unwrap() / 100;
 
-    let mut immediate = [false; 5];
+    let mut immediate = [Mode::Position; 5];
     for i in 0..5 {
       let something = modes % 10;
-      if something > 1 {
-        panic!("Should be 0 or 1");
-      }
 
-      immediate[i] = something == 1;
+      immediate[i] = match something {
+        0 => Mode::Position,
+        1 => Mode::Immediate,
+        2 => Mode::Relative,
+        _ => {
+          panic!("Should be 0, 1 or 2");
+        }
+      };
       modes /= 10;
     }
 
-    // Addition case
-    if current == 1 {
-      let outp = nums.get(&((at + 3) as usize)).unwrap();
+    match current {
+      // Addition case
+      1 => {
+        let outp = nums.get(&((at + 3) as usize)).unwrap();
 
-      let val1 = val_at(&nums, at + 1, immediate[0]);
-      let val2 = val_at(&nums, at + 2, immediate[1]);
+        let val1 = val_at(&nums, at + 1, immediate[0]);
+        let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      // println!("add: {} * {}", val1, val2);
+        // println!("add: {} * {}", val1, val2);
 
-      let sum = val1 + val2;
-      self.nums.insert(*outp as usize, sum);
+        let sum = val1 + val2;
+        self.nums.insert(*outp as usize, sum);
 
-      self.at += 4;
-      return true;
-    }
-
-    // Multiplication
-    if current == 2 {
-      let outp = nums.get(&((at + 3) as usize)).unwrap();
-
-      let val1 = val_at(&nums, at + 1, immediate[0]);
-      let val2 = val_at(&nums, at + 2, immediate[1]);
-
-      // println!("mult: {} * {}", val1, val2);
-      let sum = val1 * val2;
-      self.nums.insert(*outp as usize, sum);
-
-      self.at += 4;
-      return true;
-    }
-
-    // Read input
-    if current == 3 {
-      let outp = nums.get(&((at + 1) as usize)).unwrap();
-
-      // Get input
-      // let inp = read_int();
-      let inp = inp_read[read_at];
-      self.read_at += 1;
-      // println!("read {}", inp);
-
-      self.nums.insert(*outp as usize, inp);
-
-      self.at += 2;
-      return true;
-    }
-
-    // Write output
-    if current == 4 {
-      let temp = *nums.get(&((at + 1) as usize)).unwrap();
-      let outp = *nums.get(&(temp as usize)).unwrap();
-
-      // println!("output: {}", outp);
-      self.out_write.push(outp);
-      // self.write_at should be changed after it is read
-
-      self.at += 2;
-      return true;
-    }
-
-    // Jump if TRUE
-    if current == 5 {
-      let val1 = val_at(&nums, at + 1, immediate[0]);
-      let val2 = val_at(&nums, at + 2, immediate[1]);
-
-      // println!("jump true: {}, {}", val1, val2);
-
-      // Jumps here
-      if val1 != 0 {
-        self.at = val2;
+        self.at += 4;
         return true;
       }
 
-      // output
-      self.at += 3;
-      return true;
-    }
+      // Multiplication
+      2 => {
+        let outp = nums.get(&((at + 3) as usize)).unwrap();
 
-    // Jump if TRUE
-    if current == 6 {
-      let val1 = val_at(&nums, at + 1, immediate[0]);
-      let val2 = val_at(&nums, at + 2, immediate[1]);
+        let val1 = val_at(&nums, at + 1, immediate[0]);
+        let val2 = val_at(&nums, at + 2, immediate[1]);
 
-      // println!("jump false: {}, {}", val1, val2);
+        // println!("mult: {} * {}", val1, val2);
+        let sum = val1 * val2;
+        self.nums.insert(*outp as usize, sum);
 
-      // Jumps here
-      if val1 == 0 {
-        self.at = val2;
+        self.at += 4;
         return true;
       }
 
-      self.at += 3;
-      return true;
+      // Read input
+      3 => {
+        let outp = nums.get(&((at + 1) as usize)).unwrap();
+
+        // Get input
+        // let inp = read_int();
+        let inp = inp_read[read_at];
+        self.read_at += 1;
+        // println!("read {}", inp);
+
+        self.nums.insert(*outp as usize, inp);
+
+        self.at += 2;
+        return true;
+      }
+
+      // Write output
+      4 => {
+        let temp = *nums.get(&((at + 1) as usize)).unwrap();
+        let outp = *nums.get(&(temp as usize)).unwrap();
+
+        // println!("output: {}", outp);
+        self.out_write.push(outp);
+        // self.write_at should be changed after it is read
+
+        self.at += 2;
+        return true;
+      }
+
+      // Jump if TRUE
+      5 => {
+        let val1 = val_at(&nums, at + 1, immediate[0]);
+        let val2 = val_at(&nums, at + 2, immediate[1]);
+
+        // println!("jump true: {}, {}", val1, val2);
+
+        // Jumps here
+        if val1 != 0 {
+          self.at = val2;
+          return true;
+        }
+
+        // output
+        self.at += 3;
+        return true;
+      }
+
+      // Jump if TRUE
+      6 => {
+        let val1 = val_at(&nums, at + 1, immediate[0]);
+        let val2 = val_at(&nums, at + 2, immediate[1]);
+
+        // println!("jump false: {}, {}", val1, val2);
+
+        // Jumps here
+        if val1 == 0 {
+          self.at = val2;
+          return true;
+        }
+
+        self.at += 3;
+        return true;
+      }
+
+      // Less than
+      7 => {
+        let outp = nums.get(&((at + 3) as usize)).unwrap();
+
+        let val1 = val_at(&nums, at + 1, immediate[0]);
+        let val2 = val_at(&nums, at + 2, immediate[1]);
+
+        // println!("less than: {} < {}", val1, val2);
+
+        let eq = if val1 < val2 { 1 } else { 0 };
+
+        self.nums.insert(*outp as usize, eq);
+
+        self.at += 4;
+        return true;
+      }
+
+      // Equality check
+      8 => {
+        let outp = nums.get(&((at + 3) as usize)).unwrap();
+
+        let val1 = val_at(&nums, at + 1, immediate[0]);
+        let val2 = val_at(&nums, at + 2, immediate[1]);
+
+        // println!("equal: {} == {}", val1, val2);
+
+        let eq = if val1 == val2 { 1 } else { 0 };
+
+        self.nums.insert(*outp as usize, eq);
+
+        self.at += 4;
+        return true;
+      }
+
+      // Halt
+      99 => {
+        return false;
+      }
+
+      _ => {
+        panic!("Opcode not known {} at {}", current, at);
+      }
     }
-
-    // Less than
-    if current == 7 {
-      let outp = nums.get(&((at + 3) as usize)).unwrap();
-
-      let val1 = val_at(&nums, at + 1, immediate[0]);
-      let val2 = val_at(&nums, at + 2, immediate[1]);
-
-      // println!("less than: {} < {}", val1, val2);
-
-      let eq = if val1 < val2 { 1 } else { 0 };
-
-      self.nums.insert(*outp as usize, eq);
-
-      self.at += 4;
-      return true;
-    }
-
-    // Equality check
-    if current == 8 {
-      let outp = nums.get(&((at + 3) as usize)).unwrap();
-
-      let val1 = val_at(&nums, at + 1, immediate[0]);
-      let val2 = val_at(&nums, at + 2, immediate[1]);
-
-      // println!("equal: {} == {}", val1, val2);
-
-      let eq = if val1 == val2 { 1 } else { 0 };
-
-      self.nums.insert(*outp as usize, eq);
-
-      self.at += 4;
-      return true;
-    }
-
-    if current == 99 {
-      return false;
-    }
-
-    panic!("Opcode not known {} at {}", current, at);
   }
 
   fn add_to_read(&mut self, val: i32) {
@@ -237,12 +253,14 @@ impl Computer {
   }
 }
 
-fn val_at(nums: &HashMap<usize, i32>, at: i32, immediate: bool) -> i32 {
-  if immediate {
+fn val_at(nums: &HashMap<usize, i32>, at: i32, mode: Mode) -> i32 {
+  if mode == Mode::Immediate {
     *nums.get(&(at as usize)).unwrap()
-  } else {
+  } else if mode == Mode::Position {
     let temp = *nums.get(&(at as usize)).unwrap();
     *nums.get(&(temp as usize)).unwrap()
+  } else {
+    panic!("Relative not implemented yet")
   }
 }
 
