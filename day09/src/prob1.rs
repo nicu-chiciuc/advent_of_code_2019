@@ -4,19 +4,19 @@ use std::env;
 use std::fs;
 use std::io;
 
-const nr_computers: usize = 5;
+const nr_computers: i64 = 5;
 
 #[derive(Debug)]
 struct Computer {
   name: String,
   halted: bool,
-  at: i32,
-  relative_base: i32,
-  nums: HashMap<usize, i32>,
-  inp_read: Vec<i32>,
-  read_at: usize,
-  out_write: Vec<i32>,
-  write_at: usize,
+  at: i64,
+  relative_base: i64,
+  nums: HashMap<i64, i64>,
+  inp_read: Vec<i64>,
+  read_at: i64,
+  out_write: Vec<i64>,
+  write_at: i64,
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -27,10 +27,10 @@ enum Mode {
 }
 
 impl Computer {
-  fn new(nums_vec: Vec<i32>, name: String) -> Computer {
-    let mut nums: HashMap<usize, i32> = HashMap::new();
+  fn new(nums_vec: Vec<i64>, name: String) -> Computer {
+    let mut nums: HashMap<i64, i64> = HashMap::new();
     for (index, &val) in nums_vec.iter().enumerate() {
-      nums.insert(index, val);
+      nums.insert(index as i64, val);
     }
 
     Computer {
@@ -54,16 +54,20 @@ impl Computer {
     let inp_read = &self.inp_read;
     let read_at = self.read_at;
 
-    let current = nums.get(&(at as usize)).unwrap() % 100;
-    let mut modes = nums.get(&(at as usize)).unwrap() / 100;
+    let current = nums.get(&(at as i64)).unwrap() % 100;
+    let mut modes = nums.get(&(at as i64)).unwrap() / 100;
 
-    println!("current: {}, modes: {}", current, modes);
+    let print_loc = format!(
+      "at: {}, current: {}, modes: {}\n\n",
+      self.at, current, modes
+    );
 
-    let mut immediate = [Mode::Position; 5];
+    let mut mode = [Mode::Position; 5];
+    // Extract modes
     for i in 0..5 {
       let something = modes % 10;
 
-      immediate[i] = match something {
+      mode[i] = match something {
         0 => Mode::Position,
         1 => Mode::Immediate,
         2 => Mode::Relative,
@@ -77,30 +81,30 @@ impl Computer {
     match current {
       // Addition case
       1 => {
-        let outp = nums.get(&((at + 3) as usize)).unwrap();
-
-        let val1 = self.val_at(at + 1, immediate[0]);
-        let val2 = self.val_at(at + 2, immediate[1]);
-
-        println!("add: {} * {}", val1, val2);
+        let val1 = self.val_at(at + 1, mode[0]);
+        let val2 = self.val_at(at + 2, mode[1]);
+        let outp = self.out_val_at(at + 3, mode[2]);
 
         let sum = val1 + val2;
-        self.nums.insert(*outp as usize, sum);
+        self.nums.insert(outp, sum);
 
         self.at += 4;
+
+        //println!("add: {} + {}", val1, val2);
+        //println!("  {}", print_loc);
         return true;
       }
 
       // Multiplication
       2 => {
-        let outp = nums.get(&((at + 3) as usize)).unwrap();
+        let val1 = self.val_at(at + 1, mode[0]);
+        let val2 = self.val_at(at + 2, mode[1]);
+        let outp = self.out_val_at(at + 3, mode[2]);
 
-        let val1 = self.val_at(at + 1, immediate[0]);
-        let val2 = self.val_at(at + 2, immediate[1]);
-
-        println!("mult: {} * {}", val1, val2);
+        //println!("mult: {} * {}", val1, val2);
+        //println!("  {}", print_loc);
         let sum = val1 * val2;
-        self.nums.insert(*outp as usize, sum);
+        self.nums.insert(outp, sum);
 
         self.at += 4;
         return true;
@@ -108,15 +112,16 @@ impl Computer {
 
       // Read input
       3 => {
-        let outp = nums.get(&((at + 1) as usize)).unwrap();
+        let outp = self.out_val_at(at + 1, mode[0]);
 
         // Get input
         // let inp = read_int();
-        let inp = inp_read[read_at];
+        let inp = inp_read[read_at as usize];
         self.read_at += 1;
-        println!("read {}", inp);
+        //println!("read {}", inp);
+        //println!("  {}", print_loc);
 
-        self.nums.insert(*outp as usize, inp);
+        self.nums.insert(outp, inp);
 
         self.at += 2;
         return true;
@@ -124,16 +129,11 @@ impl Computer {
 
       // Write output
       4 => {
-        let outp = self.val_at(at + 1, immediate[0]);
+        let val1 = self.val_at(at + 1, mode[0]);
 
-        // let temp = *nums.get(&((at + 1) as usize)).unwrap();
-        // println!("temp: {}", temp);
-        // let outp = *nums.get(&(temp as usize)).unwrap();
-        println!("outp: {}", outp);
-
-        println!("output: {}", outp);
-        self.out_write.push(outp);
-        // self.write_at should be changed after it is read
+        //println!("output: {}", val1);
+        //println!("  {}", print_loc);
+        self.out_write.push(val1);
 
         self.at += 2;
         return true;
@@ -141,10 +141,11 @@ impl Computer {
 
       // Jump if TRUE
       5 => {
-        let val1 = self.val_at(at + 1, immediate[0]);
-        let val2 = self.val_at(at + 2, immediate[1]);
+        let val1 = self.val_at(at + 1, mode[0]);
+        let val2 = self.val_at(at + 2, mode[1]);
 
-        println!("jump true: {}, {}", val1, val2);
+        //println!("jump true: {}, {}", val1, val2);
+        //println!("  {}", print_loc);
 
         // Jumps here
         if val1 != 0 {
@@ -159,10 +160,11 @@ impl Computer {
 
       // Jump if TRUE
       6 => {
-        let val1 = self.val_at(at + 1, immediate[0]);
-        let val2 = self.val_at(at + 2, immediate[1]);
+        let val1 = self.val_at(at + 1, mode[0]);
+        let val2 = self.val_at(at + 2, mode[1]);
 
-        println!("jump false: {}, {}", val1, val2);
+        //println!("jump false: {}, {}", val1, val2);
+        //println!("  {}", print_loc);
 
         // Jumps here
         if val1 == 0 {
@@ -176,16 +178,16 @@ impl Computer {
 
       // Less than
       7 => {
-        let outp = nums.get(&((at + 3) as usize)).unwrap();
+        let val1 = self.val_at(at + 1, mode[0]);
+        let val2 = self.val_at(at + 2, mode[1]);
+        let outp = self.out_val_at(at + 3, mode[2]);
 
-        let val1 = self.val_at(at + 1, immediate[0]);
-        let val2 = self.val_at(at + 2, immediate[1]);
-
-        println!("less than: {} < {}", val1, val2);
+        //println!("less than: {} < {}", val1, val2);
+        //println!("  {}", print_loc);
 
         let eq = if val1 < val2 { 1 } else { 0 };
 
-        self.nums.insert(*outp as usize, eq);
+        self.nums.insert(outp, eq);
 
         self.at += 4;
         return true;
@@ -193,16 +195,16 @@ impl Computer {
 
       // Equality check
       8 => {
-        let outp = nums.get(&((at + 3) as usize)).unwrap();
+        let val1 = self.val_at(at + 1, mode[0]);
+        let val2 = self.val_at(at + 2, mode[1]);
+        let outp = self.out_val_at(at + 3, mode[2]);
 
-        let val1 = self.val_at(at + 1, immediate[0]);
-        let val2 = self.val_at(at + 2, immediate[1]);
-
-        println!("equal: {} == {}", val1, val2);
+        //println!("equal: {} == {}", val1, val2);
+        //println!("  {}", print_loc);
 
         let eq = if val1 == val2 { 1 } else { 0 };
 
-        self.nums.insert(*outp as usize, eq);
+        self.nums.insert(outp, eq);
 
         self.at += 4;
         return true;
@@ -210,18 +212,22 @@ impl Computer {
 
       // Change relative base
       9 => {
-        let val1 = self.val_at(at + 1, immediate[0]);
+        let val1 = self.val_at(at + 1, mode[0]);
 
-        println!("change relative base {}", val1);
         self.relative_base += val1;
-
         self.at += 2;
+        //println!(
+        //   "change base {}, new base {}, next at {}",
+        //   val1, self.relative_base, self.at
+        // );
         return true;
       }
 
       // Halt
       99 => {
         self.halted = true;
+        //println!("halt");
+        //println!("  {}", print_loc);
         return false;
       }
 
@@ -231,85 +237,123 @@ impl Computer {
     }
   }
 
-  fn add_to_read(&mut self, val: i32) {
+  fn add_to_read(&mut self, val: i64) {
     self.inp_read.push(val);
   }
 
-  fn new_response(&self) -> usize {
-    self.out_write.len() - self.write_at
-  }
-
-  fn read_response(&mut self) -> Option<i32> {
-    if self.out_write.len() > self.write_at {
+  fn read_response(&mut self) -> Option<i64> {
+    if (self.out_write.len() as i64) > self.write_at {
       self.write_at += 1;
 
-      // println!("Attempting to extract value at {}", self.write_at - 1);
+      // //println!("Attempting to extract value at {}", self.write_at - 1);
 
-      return Some(self.out_write[self.write_at - 1]);
+      return Some(self.out_write[(self.write_at - 1) as usize]);
     }
 
     None
   }
 
-  fn next_until_output(&mut self) -> Option<i32> {
+  fn next_until_output(&mut self) -> Option<i64> {
     loop {
       let running = self.next();
 
       let resp = self.read_response();
       if let Some(val) = resp {
-        // println!("{}: Got output {}", self.name, val);
+        // //println!("{}: Got output {}", self.name, val);
 
         return Some(val);
       }
 
       if !running {
-        // println!("Comp {} halted", self.name);
+        // //println!("Comp {} halted", self.name);
         self.halted = true;
         return None;
       }
     }
   }
 
-  fn val_at(&self, at: i32, mode: Mode) -> i32 {
-    if mode == Mode::Immediate {
-      *self.nums.get(&(at as usize)).unwrap_or(&0)
-    } else if mode == Mode::Position {
-      let temp = *self.nums.get(&(at as usize)).unwrap_or(&0);
-      *self.nums.get(&(temp as usize)).unwrap_or(&0)
-    } else {
-      let temp = *self.nums.get(&(at as usize)).unwrap_or(&0);
+  // Returns the location where it should output
+  fn out_val_at(&self, at: i64, mode: Mode) -> i64 {
+    match mode {
+      Mode::Immediate => {
+        panic!("Mode::Immediat doesn't make sens for outputs",);
+        // //println!("    immediate: at: {}, value: {}", at, value);
+      }
+      Mode::Position => {
+        let value = *self.nums.get(&(at)).unwrap_or(&0);
 
-      let relative = (self.relative_base + temp) as usize;
+        //println!("    position: at: {}, value: {}", at, value);
+        value
+      }
+      Mode::Relative => {
+        let temp = *self.nums.get(&at).unwrap_or(&0);
 
-      *self.nums.get(&relative).unwrap_or(&0)
+        let relative = self.relative_base + temp;
+        let value = relative;
+
+        //println!(
+        //   "    relative, at: {}, temp: {}, value: {}, relative: {}, base: {}",
+        //   at, temp, value, relative, self.relative_base
+        // );
+        value
+      }
+    }
+  }
+
+  fn val_at(&self, at: i64, mode: Mode) -> i64 {
+    match mode {
+      Mode::Immediate => {
+        let value = *self.nums.get(&at).unwrap_or(&0);
+        //println!("    immediate: at: {}, value: {}", at, value);
+        value
+      }
+      Mode::Position => {
+        let temp = *self.nums.get(&(at)).unwrap_or(&0);
+        let value = *self.nums.get(&temp).unwrap_or(&0);
+
+        //println!("    position: at: {}, temp: {}, value: {}", at, temp, value);
+        value
+      }
+      Mode::Relative => {
+        let temp = *self.nums.get(&at).unwrap_or(&0);
+
+        let relative = self.relative_base + temp;
+        let value = *self.nums.get(&relative).unwrap_or(&0);
+
+        //println!(
+        //   "    relative, at: {}, temp: {}, value: {}, relative: {}, base: {}",
+        //   at, temp, value, relative, self.relative_base
+        // );
+        value
+      }
     }
   }
 }
 
-fn print_vec(vec: &Vec<i32>) {
+fn print_vec(vec: &Vec<i64>) {
   for i in vec.iter() {
     print!("{} ", i);
   }
-  println!();
+  //println!();
 }
 
-fn read_int() -> i32 {
+fn read_int() -> i64 {
   let mut input_text = String::new();
-  // println!("input: ");
+  // //println!("input: ");
 
   io::stdin()
     .read_line(&mut input_text)
     .expect("failed to read from stdin");
 
   let trimmed = input_text.trim();
-  match trimmed.parse::<i32>() {
+  match trimmed.parse::<i64>() {
     Ok(i) => return i,
     Err(..) => panic!("Expected an integer"),
   };
 }
 
-fn is_valid_permutation(comb: &Vec<i32>) -> bool {
-  let mut set: HashSet<i32> = HashSet::new();
+fn is_valid_permutation(comb: &Vec<i64>) -> bool {
+  let mut set: HashSet<i64> = HashSet::new();
   for i in comb.iter() {
     set.insert(*i);
   }
@@ -317,7 +361,7 @@ fn is_valid_permutation(comb: &Vec<i32>) -> bool {
   set.len() == comb.len()
 }
 
-fn combination_tester(combination: &Vec<i32>, initial_nums: &Vec<i32>) -> i32 {
+fn combination_tester(combination: &Vec<i64>, initial_nums: &Vec<i64>) -> i64 {
   let mut nums = initial_nums.to_vec();
 
   let mut computers: Vec<Computer> = vec![
@@ -337,17 +381,17 @@ fn combination_tester(combination: &Vec<i32>, initial_nums: &Vec<i32>) -> i32 {
   computers[0].add_to_read(0);
   let mut last_output = 0;
 
-  'outer: while !computers[nr_computers - 1].halted {
+  'outer: while !computers[(nr_computers - 1) as usize].halted {
     // Iterate through each computers getting the input from one and passing it to the other
     for comp_i in 0..computers.len() {
       if computers[comp_i].halted {
         break 'outer;
       }
       let outp = computers[comp_i].next_until_output();
-      let next_comp = (comp_i + 1) % nr_computers;
+      let next_comp = ((comp_i + 1) as i64) % nr_computers;
 
       if let Some(val) = outp {
-        computers[next_comp].add_to_read(val);
+        computers[next_comp as usize].add_to_read(val);
         last_output = val;
       }
     }
@@ -359,17 +403,20 @@ fn combination_tester(combination: &Vec<i32>, initial_nums: &Vec<i32>) -> i32 {
 pub fn main() {
   // Reading part
   let contents = fs::read_to_string("input.txt").expect("File couldn't be read");
-  let initialNums: Vec<i32> = contents
+  let initialNums: Vec<i64> = contents
     .split(",")
     .map(|num| num.parse().unwrap())
     .collect();
 
   let mut comp = Computer::new(initialNums.to_vec(), String::from("A"));
 
+  // For problem 1 change to "1"
+  comp.add_to_read(2);
   while !comp.halted {
     comp.next();
   }
 
+  //println!("------");
   loop {
     let resp = comp.read_response();
 
@@ -391,7 +438,7 @@ pub fn main() {
         for i2 in 5..10 {
           for i3 in 5..10 {
             for i4 in 5..10 {
-              let combination: Vec<i32> = vec![i0, i1, i2, i3, i4];
+              let combination: Vec<i64> = vec![i0, i1, i2, i3, i4];
               if is_valid_permutation(&combination) {
                 let current = combination_tester(&combination, &initialNums);
                 if current > max_output_signal {
@@ -404,6 +451,6 @@ pub fn main() {
       }
     }
 
-    println!("best: {}", max_output_signal);
+    //println!("best: {}", max_output_signal);
   }
 }
