@@ -86,7 +86,7 @@ struct Alphas {
   beta: i32,
 }
 
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 struct Frac {
   alpha: i32,
   beta: i32,
@@ -123,15 +123,29 @@ impl DataPart {
       }
     }
 
-    let mut keys: Vec<&Frac> = self.diags.keys().collect();
-    keys.sort_by(|a, b| {
-      let fa = (a.alpha as f64) / (a.beta as f64);
-      let fb = (b.alpha as f64) / (b.beta as f64);
+    let keys = {
+      let mut keys: Vec<Frac> = self.diags.keys().cloned().collect();
+      keys.sort_by(|a, b| {
+        let fa = (a.alpha as f64) / (a.beta as f64);
+        let fb = (b.alpha as f64) / (b.beta as f64);
 
-      fa.partial_cmp(&fb).unwrap()
-    });
+        fa.partial_cmp(&fb).unwrap()
+      });
+      keys
+    };
 
-    println!("keys: {:?}", keys);
+    for key in keys.iter() {
+      let vec = self.diags.get_mut(&key).unwrap();
+      let elem_gcd = vec.pop().unwrap();
+      *count -= 1;
+      if *count == 0 {
+        let elem = Alphas {
+          alpha: key.alpha * elem_gcd,
+          beta: key.beta * elem_gcd,
+        };
+        return Some(elem);
+      }
+    }
 
     // returns how many elements it has removed
     // also returns if count is 0
@@ -187,42 +201,62 @@ fn arr_to_par(max_alpha: i32, max_beta: i32, alpha_contains: impl Fn(Alphas) -> 
   DataPart { straight, diags }
 }
 
-fn arr_to_data(arr: &Vec<Vec<char>>, start: Point, width: i32, height: i32) -> i32 {
+fn arr_to_data(arr: &Vec<Vec<char>>, start: Point, width: i32, height: i32) -> Point {
   let point_is_good =
-    |x: i32, y: i32| within_bounds(x, y, width, height) && arr[y as usize][x as usize] == '#';
+    |p: &Point| within_bounds(p.x, p.y, width, height) && arr[p.y as usize][p.x as usize] == '#';
+
+  let tr_alpha_point = |albeta: Alphas| {
+    let x = albeta.alpha + start.x;
+    let y = start.y - albeta.beta;
+    Point { x, y }
+  };
+
+  let rd_alpha_point = |albeta: Alphas| {
+    let x = start.x + albeta.beta;
+    let y = start.y + albeta.alpha;
+    Point { x, y }
+  };
+
+  let dl_alpha_point = |albeta: Alphas| {
+    let x = start.x - albeta.alpha;
+    let y = start.y + albeta.beta;
+    Point { x, y }
+  };
+
+  let lu_alpha_point = |albeta: Alphas| {
+    let x = start.x - albeta.beta;
+    let y = start.y - albeta.alpha;
+    Point { x, y }
+  };
 
   let mut data_top_right = {
     let top_right_contains = |albeta: Alphas| {
-      let x = albeta.alpha + start.x;
-      let y = start.y - albeta.beta;
-      point_is_good(x, y)
+      let p = tr_alpha_point(albeta);
+      point_is_good(&p)
     };
     arr_to_par(width, height, top_right_contains)
   };
 
-  let data_right_down = {
+  let mut data_right_down = {
     let right_down_contains = |albeta: Alphas| {
-      let x = start.x + albeta.beta;
-      let y = start.y + albeta.alpha;
-      point_is_good(x, y)
+      let p = rd_alpha_point(albeta);
+      point_is_good(&p)
     };
     arr_to_par(width, height, right_down_contains)
   };
 
-  let data_down_left = {
+  let mut data_down_left = {
     let down_left_contains = |albeta: Alphas| {
-      let x = start.x - albeta.alpha;
-      let y = start.y + albeta.beta;
-      point_is_good(x, y)
+      let p = dl_alpha_point(albeta);
+      point_is_good(&p)
     };
     arr_to_par(width, height, down_left_contains)
   };
 
-  let data_left_up = {
+  let mut data_left_up = {
     let left_up_contains = |albeta: Alphas| {
-      let x = start.x - albeta.beta;
-      let y = start.y - albeta.alpha;
-      point_is_good(x, y)
+      let p = lu_alpha_point(albeta);
+      point_is_good(&p)
     };
     arr_to_par(width, height, left_up_contains)
   };
@@ -232,9 +266,25 @@ fn arr_to_data(arr: &Vec<Vec<char>>, start: Point, width: i32, height: i32) -> i
   data_down_left.print();
   data_left_up.print();
 
-  let mut count = 5;
-  data_top_right.remove_elems(&mut 5);
-  0
+  loop {
+    let mut count = 200;
+
+    if let Some(val) = data_top_right.remove_elems(&mut count) {
+      return tr_alpha_point(val);
+    }
+
+    if let Some(val) = data_right_down.remove_elems(&mut count) {
+      return rd_alpha_point(val);
+    }
+
+    if let Some(val) = data_down_left.remove_elems(&mut count) {
+      return dl_alpha_point(val);
+    }
+
+    if let Some(val) = data_left_up.remove_elems(&mut count) {
+      return lu_alpha_point(val);
+    }
+  }
 }
 
 pub fn main() {
@@ -254,9 +304,7 @@ pub fn main() {
 
   println!("height:{}, width:{}", height, width);
 
-  arr_to_data(&arr, Point { x: 0, y: 4 }, width as i32, height as i32);
+  let p = arr_to_data(&arr, Point { x: 25, y: 31 }, width as i32, height as i32);
 
-  let mut max_count = -1;
-
-  println!("max count: {}", max_count);
+  println!("point: {:?}", p);
 }

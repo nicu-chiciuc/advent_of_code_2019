@@ -4,6 +4,12 @@ use std::env;
 use std::fs;
 use std::io;
 
+#[derive(PartialEq, Eq, Debug, Clone)]
+struct Point {
+  x: i32,
+  y: i32,
+}
+
 pub fn spiral(level: i32) -> Vec<(i32, i32)> {
   let mut spiral: Vec<(i32, i32)> = vec![];
 
@@ -92,6 +98,7 @@ pub fn main() {
   println!("height:{}, width:{}", height, width);
 
   let mut max_count = -1;
+  let mut max_count_at = None;
 
   // even though max_level should be sqrt(2) * something
   let max_level = height + width;
@@ -145,11 +152,15 @@ pub fn main() {
         println!("at x:{}, y:{}, count:{}", x, y, count);
 
         if count > max_count {
+          max_count_at = Some(Point {
+            x: x as i32,
+            y: y as i32,
+          });
           max_count = count;
         }
       }
     }
   }
 
-  println!("max count: {}", max_count);
+  println!("max count: {}, at: {:?}", max_count, max_count_at);
 }
