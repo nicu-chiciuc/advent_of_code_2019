@@ -1,6 +1,6 @@
 mod computer;
-mod prob1;
+mod prob2;
 
 fn main() {
-    prob1::main();
+    prob2::main();
 }
