@@ -83,8 +83,8 @@ fn step(locations: &mut Vec<Vector>, speeds: &mut Vec<Vector>) {
     loc.add(&speeds[index]);
   }
 
-  print_vectors(&locations);
-  print_vectors(&speeds);
+  // print_vectors(&locations);
+  // print_vectors(&speeds);
 }
 
 fn to_hash(locations: &Vec<Vector>, speeds: &Vec<Vector>) -> String {
@@ -130,19 +130,22 @@ pub fn main() {
   let mut previous: HashSet<String> = HashSet::new();
   previous.insert(to_hash(&locations, &speeds));
 
-  for i in 0..3000 {
+  let mut i: i64 = 0;
+  while i < 10_000_000_000 {
+    // println!("{}", i);
     step(&mut locations, &mut speeds);
-    let hash = to_hash(&locations, &speeds);
+    // let hash = to_hash(&locations, &speeds);
 
-    if previous.contains(&hash) {
-      println!("Fund repetition at {}", i);
-      break;
-    }
+    // if previous.contains(&hash) {
+    //   println!("Fund repetition at {}", i + 1);
+    //   break;
+    // }
 
-    previous.insert(hash);
+    // previous.insert(hash);
+    i += 1;
   }
 
-  let e = energy(&locations, &speeds);
+  // let e = energy(&locations, &speeds);
 
-  println!("{}", e);
+  // println!("{}", e);
 }
