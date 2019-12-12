@@ -95,7 +95,8 @@ struct Frac {
 #[derive(Debug)]
 struct DataPart {
   straight: Vec<Alphas>,
-  diags: HashMap<Frac, Vec<Alphas>>,
+  // Store just the divisor
+  diags: HashMap<Frac, Vec<i32>>,
 }
 
 impl DataPart {
@@ -108,20 +109,34 @@ impl DataPart {
     }
     println!("---");
   }
-}
 
-struct Data {
-  Up: Vec<Point>,
-  TopRight: HashMap<Frac, Vec<Point>>,
+  /**
+   * Returns None if didn't catch a thing
+   */
+  fn remove_elems(&mut self, count: &mut i32) -> Option<Alphas> {
+    // Elements in straight are sorted increasingly
+    if self.straight.len() > 0 {
+      let elem = self.straight.pop().unwrap();
+      *count -= 1;
+      if *count == 0 {
+        return Some(elem);
+      }
+    }
 
-  Right: Vec<Point>,
-  RightDown: HashMap<Frac, Vec<Point>>,
+    let mut keys: Vec<&Frac> = self.diags.keys().collect();
+    keys.sort_by(|a, b| {
+      let fa = (a.alpha as f64) / (a.beta as f64);
+      let fb = (b.alpha as f64) / (b.beta as f64);
 
-  Down: Vec<Point>,
-  DownLeft: HashMap<Frac, Vec<Point>>,
+      fa.partial_cmp(&fb).unwrap()
+    });
 
-  Left: Vec<Point>,
-  LeftUp: HashMap<Frac, Vec<Point>>,
+    println!("keys: {:?}", keys);
+
+    // returns how many elements it has removed
+    // also returns if count is 0
+    None
+  }
 }
 
 fn arr_to_par(max_alpha: i32, max_beta: i32, alpha_contains: impl Fn(Alphas) -> bool) -> DataPart {
@@ -135,8 +150,10 @@ fn arr_to_par(max_alpha: i32, max_beta: i32, alpha_contains: impl Fn(Alphas) -> 
       straight.push(Alphas { alpha: 0, beta });
     }
   }
+  // So that elements can be popped easily
+  straight.reverse();
 
-  let mut diags: HashMap<Frac, Vec<Alphas>> = HashMap::new();
+  let mut diags: HashMap<Frac, Vec<i32>> = HashMap::new();
   for beta in 1..max_beta {
     for alpha in 1..max_alpha {
       if !alpha_contains(Alphas { alpha, beta }) {
@@ -151,13 +168,20 @@ fn arr_to_par(max_alpha: i32, max_beta: i32, alpha_contains: impl Fn(Alphas) -> 
 
       match diags.get_mut(&frac) {
         Some(vecs) => {
-          vecs.push(Alphas { alpha, beta });
+          vecs.push(greatest);
         }
         None => {
-          diags.insert(frac, vec![Alphas { alpha, beta }]);
+          diags.insert(frac, vec![greatest]);
         }
       }
     }
+  }
+
+  // Sort diags so that can be easily popped
+  for frac in diags.iter_mut() {
+    let f = frac.1;
+    f.sort();
+    f.reverse();
   }
 
   DataPart { straight, diags }
@@ -167,7 +191,7 @@ fn arr_to_data(arr: &Vec<Vec<char>>, start: Point, width: i32, height: i32) -> i
   let point_is_good =
     |x: i32, y: i32| within_bounds(x, y, width, height) && arr[y as usize][x as usize] == '#';
 
-  let data_top_right = {
+  let mut data_top_right = {
     let top_right_contains = |albeta: Alphas| {
       let x = albeta.alpha + start.x;
       let y = start.y - albeta.beta;
@@ -207,6 +231,9 @@ fn arr_to_data(arr: &Vec<Vec<char>>, start: Point, width: i32, height: i32) -> i
   data_right_down.print();
   data_down_left.print();
   data_left_up.print();
+
+  let mut count = 5;
+  data_top_right.remove_elems(&mut 5);
   0
 }
 
@@ -227,7 +254,7 @@ pub fn main() {
 
   println!("height:{}, width:{}", height, width);
 
-  arr_to_data(&arr, Point { x: 2, y: 3 }, width as i32, height as i32);
+  arr_to_data(&arr, Point { x: 0, y: 4 }, width as i32, height as i32);
 
   let mut max_count = -1;
 
